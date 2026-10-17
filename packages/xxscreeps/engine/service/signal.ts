@@ -37,6 +37,7 @@ export function initializeInterruptSignal() {
 		// @ts-expect-error
 		// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 		broadcast.unref();
+
 		const unlisten = listen(process, 'SIGINT', () => {
 			broadcast.postMessage('SIGINT');
 			setTimeout(() => {
@@ -59,5 +60,6 @@ export function handleInterruptSignal(fn: () => void) {
 	// @ts-expect-error
 	// eslint-disable-next-line @typescript-eslint/no-unsafe-call
 	broadcast.unref();
+	process.once('SIGTERM', () => process.emit('SIGINT'));
 	return disposable;
 }
