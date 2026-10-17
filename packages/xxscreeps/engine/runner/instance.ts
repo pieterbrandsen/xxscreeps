@@ -34,7 +34,7 @@ const acquireConnectors = function(invoke) {
 		} ] as const;
 	};
 }(hooks.makeMapped('runnerConnector'));
-const kCPU = 100;
+const kCPU = 20;
 
 const initializeRunner = hooks.makeMapped('runnerWorker');
 /** @internal */
