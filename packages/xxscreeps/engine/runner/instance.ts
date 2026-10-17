@@ -34,7 +34,14 @@ const acquireConnectors = function(invoke) {
 		} ] as const;
 	};
 }(hooks.makeMapped('runnerConnector'));
-const kCPU = config.runner.cpu.limit;
+const kGCLMultiply = 1_000_000;
+const kGCLPower = 2.4;
+const kGCLCPUPerLevel = 10;
+
+export function cpuLimitForGCL(gcl: number) {
+	const level = Math.floor((gcl / kGCLMultiply) ** (1 / kGCLPower)) + 1;
+	return Math.min(config.runner.cpu.maxLimit, config.runner.cpu.baseLimit + (level - 1) * kGCLCPUPerLevel);
+}
 
 const initializeRunner = hooks.makeMapped('runnerWorker');
 /** @internal */
@@ -170,6 +177,11 @@ export class PlayerInstance {
 	}
 
 	async run(this: PlayerInstance, time: number, visibleRooms: string[], intentRooms: string[]) {
+		const limit = config.runner.cpu.limit
+			?? (config.runner.cpu.gclToCPU
+				? cpuLimitForGCL(Number(await this.shard.db.data.hGet(User.infoKey(this.userId), 'gcl')) || 0)
+				: config.runner.cpu.baseLimit);
+
 		const result = await (async () => {
 			// Dispose the current sandbox if the user has pushed new code
 			const wasStale = this.stale;
@@ -197,6 +209,7 @@ export class PlayerInstance {
 				return;
 			}
 
+
 			// Run the tick
 			try {
 				const bucket = Math.floor(this.bucket);
@@ -205,7 +218,7 @@ export class PlayerInstance {
 					eval: this.consoleEval.splice(0),
 					cpu: {
 						bucket,
-						limit: kCPU,
+						limit,
 						tickLimit: Math.min(config.runner.cpu.tickLimit, bucket),
 					},
 					time,
@@ -256,7 +269,7 @@ export class PlayerInstance {
 		if (result?.result === 'success') {
 			const { payload } = result;
 			const tickCpu = payload.usage.cpu ?? NaN;
-			this.bucket = clamp(0, config.runner.cpu.bucket, this.bucket - tickCpu + kCPU);
+			this.bucket = clamp(0, config.runner.cpu.bucket, this.bucket - tickCpu + limit);
 			await Promise.all([
 				// Publish intent blobs
 				publishRunnerIntentsForRooms(this.shard, this.userId, time, intentRooms, payload.intentPayloads),
@@ -283,8 +296,8 @@ export class PlayerInstance {
 			const tasks: Promise<void>[] = [];
 			if (result) {
 				// Deduct CPU limit in case of severe failure
-				this.bucket = clamp(0, config.runner.cpu.bucket, this.bucket - config.runner.cpu.tickLimit) + kCPU;
-				tasks.push(this.usageChannel.publish({ cpu: kCPU }));
+				this.bucket = clamp(0, config.runner.cpu.bucket, this.bucket - config.runner.cpu.tickLimit) + limit;
+				tasks.push(this.usageChannel.publish({ cpu: limit }));
 
 				if (result.result === 'disposed') {
 					tasks.push(this.consoleChannel.publish(JSON.stringify([ {

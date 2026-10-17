@@ -207,10 +207,19 @@ export interface RunnerCPUConfig {
 	bucket?: number;
 
 	/**
-	 * CPU regenerated each tick and reported as Game.cpu.limit.
-	 * @default 20
+	 * Fixed CPU regenerated each tick and reported as Game.cpu.limit. When present it takes precedence over GCL scaling.
+	 * Omit to use baseLimit or optional GCL scaling.
 	 */
 	limit?: number;
+
+	/** CPU regenerated at GCL 1 when no fixed limit is configured. @default 20 */
+	baseLimit?: number;
+
+	/** Raise the CPU limit by 10 for every GCL after level 1. @default false */
+	gclToCPU?: boolean;
+
+	/** Highest CPU limit permitted by GCL scaling. @default 100 */
+	maxLimit?: number;
 
 	/**
 	 * Memory limit, in megabytes. The actual memory limit as reported by the isolate will be
@@ -301,7 +310,9 @@ export const defaults = {
 	runner: {
 		concurrency: os.availableParallelism() + 1,
 		cpu: {
-			limit: 20,
+			baseLimit: 20,
+			gclToCPU: false,
+			maxLimit: 100,
 			bucket: 10000,
 			memoryLimit: 256,
 			tickLimit: 500,
