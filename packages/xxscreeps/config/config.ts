@@ -207,6 +207,12 @@ export interface RunnerCPUConfig {
 	bucket?: number;
 
 	/**
+	 * CPU regenerated each tick and reported as Game.cpu.limit.
+	 * @default 20
+	 */
+	limit?: number;
+
+	/**
 	 * Memory limit, in megabytes. The actual memory limit as reported by the isolate will be
 	 * higher, since it accounts for shared terrain data.
 	 *
@@ -295,6 +301,7 @@ export const defaults = {
 	runner: {
 		concurrency: os.availableParallelism() + 1,
 		cpu: {
+			limit: 20,
 			bucket: 10000,
 			memoryLimit: 256,
 			tickLimit: 500,
