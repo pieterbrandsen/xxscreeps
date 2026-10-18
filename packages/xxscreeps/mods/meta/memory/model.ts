@@ -46,6 +46,22 @@ export function deleteUserMemoryBlob(shard: Shard, userId: string) {
 }
 
 const memorySegmentKey = (userId: string, segmentId: number) => `user/${userId}/segments/${segmentId}`;
+const activeSegmentsKey = (userId: string) => 'user/' + userId + '/activeSegments';
+
+export async function loadActiveSegments(shard: Shard, userId: string): Promise<Set<number>> {
+	const raw = await shard.data.get(activeSegmentsKey(userId));
+	if (raw === null) return new Set();
+	try {
+		const parsed: unknown = JSON.parse(raw);
+		return new Set(Array.isArray(parsed) ? parsed.filter(isValidSegmentId) : []);
+	} catch {
+		return new Set();
+	}
+}
+
+export function saveActiveSegments(shard: Shard, userId: string, ids: Iterable<number>) {
+	return shard.data.set(activeSegmentsKey(userId), JSON.stringify([ ...new Set(Fn.filter(ids, isValidSegmentId)) ]));
+}
 
 export function loadMemorySegmentBlob(shard: Shard, userId: string, segmentId: number) {
 	return shard.data.get(memorySegmentKey(userId, segmentId), { blob: true });

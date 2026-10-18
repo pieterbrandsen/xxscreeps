@@ -6,7 +6,7 @@ import { hooks } from 'xxscreeps/engine/runner/index.js';
 import { Fn } from 'xxscreeps/functional/fn.js';
 import { disposableToEffect } from 'xxscreeps/utility/utility.js';
 import { isValidSegmentId, kMaxActiveSegments } from './memory.js';
-import { isPublicSegment, loadDefaultPublicSegment, loadMemorySegmentBlob, loadUserMemoryBlob, publicSegmentChannel, saveDefaultPublicSegment, saveMemoryBlob, saveMemorySegmentBlob, savePublicSegments } from './model.js';
+import { isPublicSegment, loadActiveSegments, loadDefaultPublicSegment, loadMemorySegmentBlob, loadUserMemoryBlob, publicSegmentChannel, saveActiveSegments, saveDefaultPublicSegment, saveMemoryBlob, saveMemorySegmentBlob, savePublicSegments } from './model.js';
 
 interface ForeignSegmentRequest {
 	id: number | undefined;
@@ -87,9 +87,9 @@ hooks.register('runnerConnector', async player => {
 
 	return [ disposableToEffect(disposable.move()), {
 		async initialize(payload) {
-			// Reset player segments
+			// Restore the selection so own segments remain visible after a runner restart.
 			activeSegments = new Set();
-			nextSegments = undefined;
+			nextSegments = await loadActiveSegments(shard, userId);
 			dirtyOwnSegments.clear();
 			payload.memoryBlob = await loadUserMemoryBlob(shard, userId);
 			// Reset foreign segments
@@ -149,6 +149,9 @@ hooks.register('runnerConnector', async player => {
 
 			// Dispatch updates
 			await Promise.all([
+				// Save active segment selection
+				payload.activeSegmentsRequest && saveActiveSegments(shard, userId, nextSegments!),
+
 				// Save primary memory blob
 				payload.memoryUpdated.payload && saveMemoryBlob(shard, userId, payload.memoryUpdated.payload),
 
