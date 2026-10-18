@@ -22,5 +22,6 @@ const memory = JSON.parse((await read(Path.join(directory, 'memory'))) ?? '{}');
 console.log(JSON.stringify({
 	memory: memory.segmentProbeCount, cpu: memory.segmentProbeCpu,
 	prior: memory.segmentProbePrior,
+	consoleProbe: memory.consoleProbe,
 	segment: await read(Path.join(directory, 'segments', '42')),
 }));
