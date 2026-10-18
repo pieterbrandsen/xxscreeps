@@ -19,6 +19,9 @@ const log = isEntry || config.runner.log
 	? (message: string) => process.stderr.write(message)
 	: () => {};
 
+// Exists before the interrupt handler: shutdown may arrive during service startup.
+const playerInstances = new Map<string, PlayerInstance>();
+
 // Interrupt handler
 let break1: Effect | undefined;
 let break2: Effect | undefined;
@@ -52,9 +55,7 @@ await using runner = await acquireRunnerContext(shard);
 await bootstrapSandbox();
 
 // Persistent player instances
-const playerInstances = disposable.adopt(
-	new Map<string, PlayerInstance>(),
-	playerInstances => playerInstances.values().forEach(instance => instance.disconnect()));
+disposable.adopt(playerInstances, instances => instances.values().forEach(instance => instance.disconnect()));
 
 // Start the runner loop
 const runnerMessages = runnerSubscription.iterable();
