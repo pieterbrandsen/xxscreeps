@@ -3,7 +3,7 @@ import type { Database } from 'xxscreeps/engine/db/index.js';
 import { hooks, makeValidatedPayloadRoute, makeValidatedQueryRoute } from 'xxscreeps/backend/index.js';
 import * as Code from 'xxscreeps/engine/db/user/code.js';
 import * as User from 'xxscreeps/engine/db/user/index.js';
-import { getConsoleChannel, requestRunnerEval } from 'xxscreeps/engine/runner/model.js';
+import { getConsoleChannel, requestRunnerEval, runnerUserChannel } from 'xxscreeps/engine/runner/model.js';
 import { Fn } from 'xxscreeps/functional/fn.js';
 import { typedArrayToString } from 'xxscreeps/utility/string.js';
 
@@ -366,5 +366,38 @@ hooks.register('route', {
 			await getConsoleChannel(context.shard, userId).publish(JSON.stringify([ { fd: 2, data: message } ]));
 		}
 		return { ok: 1 };
+	}),
+});
+
+interface ScheduledConsoleRequest {
+	expression: string;
+	time: number;
+}
+
+const scheduledConsoleRequestSchema: JSONSchemaType<ScheduledConsoleRequest> = {
+	type: 'object',
+	properties: {
+		expression: { type: 'string' },
+		time: { type: 'integer', minimum: 0 },
+	},
+	required: [ 'expression', 'time' ],
+};
+
+hooks.register('route', {
+	path: '/api/user/console-scheduled',
+	method: 'post',
+
+	execute: makeValidatedPayloadRoute(scheduledConsoleRequestSchema, async context => {
+		const { userId } = context.state;
+		if (userId == null) return;
+		const { expression, time } = context.request.body;
+		if (time <= context.shard.time + 1) {
+			return { error: 'Scheduled console time must be at least two ticks in the future' };
+		}
+		// Parse before queueing so an invalid command cannot become an invisible no-op later.
+		// eslint-disable-next-line no-new, @typescript-eslint/no-implied-eval, no-new-func
+		new Function(expression);
+		await runnerUserChannel(context.shard, userId).publish({ type: 'evalAt', time, payload: { echo: true, expr: expression } });
+		return { ok: 1, time };
 	}),
 });

@@ -92,6 +92,7 @@ export class PlayerInstance {
 	private readonly channel;
 	private readonly codeChannel;
 	private readonly consoleEval: Exclude<TickPayload['eval'], undefined> = [];
+	private readonly scheduledConsoleEval = new Map<number, Exclude<TickPayload["eval"], undefined>>();
 	private readonly consoleChannel;
 	private readonly intents: RunnerPlayerIntent[] = [];
 	private readonly seenUsers = new Set<string>();
@@ -122,6 +123,13 @@ export class PlayerInstance {
 				case 'eval':
 					this.consoleEval.push(message.payload);
 					break;
+
+				case "evalAt": {
+					const queue = this.scheduledConsoleEval.get(message.time) ?? [];
+					queue.push(message.payload);
+					this.scheduledConsoleEval.set(message.time, queue);
+					break;
+				}
 
 				case 'intent': {
 					this.intents.push(message.intent);
@@ -213,9 +221,12 @@ export class PlayerInstance {
 			// Run the tick
 			try {
 				const bucket = Math.floor(this.bucket);
+				const scheduledEval = this.scheduledConsoleEval.get(time) ?? [];
+				this.scheduledConsoleEval.delete(time);
+				for (const scheduledTime of this.scheduledConsoleEval.keys()) if (scheduledTime < time) this.scheduledConsoleEval.delete(scheduledTime);
 				const payload: Partial<TickPayload> = {
 					backendIntents: this.intents.splice(0),
-					eval: this.consoleEval.splice(0),
+					eval: [ ...scheduledEval, ...this.consoleEval.splice(0) ],
 					cpu: {
 						bucket,
 						limit,
