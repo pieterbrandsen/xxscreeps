@@ -1,17 +1,26 @@
-import { Database, Shard } from 'xxscreeps/engine/db/index.js';
-import { loadMemorySegmentBlob, loadUserMemoryString } from 'xxscreeps/mods/meta/memory/model.js';
-import { typedArrayToString } from 'xxscreeps/utility/string.js';
+import { readFile } from 'node:fs/promises';
+import Path from 'node:path';
+import { config } from 'xxscreeps/config/index.js';
 
 const userId = process.argv.at(-1);
 if (userId == null) {
 	throw new Error('Expected a user id');
 }
-await using db = await Database.connect();
-await using shard = await Shard.connect(db, 'shard0');
-const memory = JSON.parse((await loadUserMemoryString(shard, userId)) ?? '{}');
-const segment = await loadMemorySegmentBlob(shard, userId, 42);
+const dataPath = config.shards[0]!.data.split('?')[0]!;
+const directory = Path.join(dataPath, 'user', userId);
+const read = async (path: string) => {
+	try {
+		return await readFile(path, 'utf16le');
+	} catch (error: any) {
+		if (error.code === 'ENOENT') {
+			return undefined;
+		}
+		throw error;
+	}
+};
+const memory = JSON.parse((await read(Path.join(directory, 'memory'))) ?? '{}');
 console.log(JSON.stringify({
 	memory: memory.segmentProbeCount,
 	prior: memory.segmentProbePrior,
-	segment: segment == null ? undefined : typedArrayToString(new Uint16Array(segment.buffer, segment.byteOffset, segment.byteLength >>> 1)),
+	segment: await read(Path.join(directory, 'segments', '42')),
 }));
