@@ -66,3 +66,21 @@ export async function requestRunnerEval(shard: Shard, userId: string, expr: stri
 
 export const runnerUsersSetKey = (time: number) =>
 	`tick${time % 2}/runnerUsers`;
+
+const scheduledConsoleKey = (userId: string, time: number) => `user/${userId}/scheduledConsole/${time}`;
+
+export async function scheduleRunnerEval(shard: Shard, userId: string, time: number, payload: RunnerPlayerEvalPayload) {
+	const key = scheduledConsoleKey(userId, time);
+	const raw = await shard.data.get(key);
+	const scheduled = raw === null ? [] : JSON.parse(raw) as RunnerPlayerEvalPayload[];
+	scheduled.push(payload);
+	await shard.data.set(key, JSON.stringify(scheduled));
+}
+
+export async function takeScheduledRunnerEval(shard: Shard, userId: string, time: number): Promise<RunnerPlayerEvalPayload[]> {
+	const key = scheduledConsoleKey(userId, time);
+	const raw = await shard.data.get(key);
+	if (raw === null) return [];
+	await shard.data.vDel(key);
+	return JSON.parse(raw) as RunnerPlayerEvalPayload[];
+}

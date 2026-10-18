@@ -16,7 +16,7 @@ import { Fn } from 'xxscreeps/functional/fn.js';
 import { acquireWith, mustNotReject } from 'xxscreeps/utility/async.js';
 import { acquireHookEffects } from 'xxscreeps/utility/hook.js';
 import { asyncDisposableToEffect, clamp, disposableToEffect } from 'xxscreeps/utility/utility.js';
-import { getAckChannel, runnerUsageChannel, runnerUserChannel } from './model.js';
+import { getAckChannel, runnerUsageChannel, runnerUserChannel, takeScheduledRunnerEval } from './model.js';
 import { hooks } from './symbols.js';
 
 const acquireConnectors = function(invoke) {
@@ -220,9 +220,7 @@ export class PlayerInstance {
 			// Run the tick
 			try {
 				const bucket = Math.floor(this.bucket);
-				const scheduledEval = this.scheduledConsoleEval.get(time) ?? [];
-				this.scheduledConsoleEval.delete(time);
-				for (const scheduledTime of this.scheduledConsoleEval.keys()) if (scheduledTime < time) this.scheduledConsoleEval.delete(scheduledTime);
+				const scheduledEval = await takeScheduledRunnerEval(this.shard, this.userId, time);
 				const payload: Partial<TickPayload> = {
 					backendIntents: this.intents.splice(0),
 					eval: [ ...scheduledEval, ...this.consoleEval.splice(0) ],
