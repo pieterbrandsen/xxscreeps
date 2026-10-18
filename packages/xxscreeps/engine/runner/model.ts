@@ -27,7 +27,7 @@ export function getRunnerChannel(shard: Shard) {
 /** @internal */
 export type RunnerUserChannel = Channel<
 	{ type: 'eval'; payload: RunnerPlayerEvalPayload } |
-	{ type: "evalAt"; time: number; payload: RunnerPlayerEvalPayload } |
+	{ type: 'evalAt'; time: number; payload: RunnerPlayerEvalPayload } |
 	{ type: 'intent'; intent: RunnerPlayerIntent }
 >;
 
