@@ -20,7 +20,7 @@ const read = async (path: string) => {
 };
 const memory = JSON.parse((await read(Path.join(directory, 'memory'))) ?? '{}');
 console.log(JSON.stringify({
-	memory: memory.segmentProbeCount,
+	memory: memory.segmentProbeCount, cpu: memory.segmentProbeCpu,
 	prior: memory.segmentProbePrior,
 	segment: await read(Path.join(directory, 'segments', '42')),
 }));
