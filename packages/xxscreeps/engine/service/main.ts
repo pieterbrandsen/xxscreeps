@@ -12,6 +12,7 @@ import { acquireTimeout } from 'xxscreeps/utility/utility.js';
 import { tickSpeed, watch } from './tick.js';
 import { checkIsEntry, getServiceChannel } from './index.js';
 import 'xxscreeps:mods/main';
+import 'xxscreeps:mods/processor';
 
 checkIsEntry();
 await using db = await Database.connect();
