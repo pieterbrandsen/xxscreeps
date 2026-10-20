@@ -3,7 +3,7 @@ import { config } from 'xxscreeps/config/index.js';
 import { Database, Shard } from 'xxscreeps/engine/db/index.js';
 import { Mutex } from 'xxscreeps/engine/db/mutex.js';
 import { abandonIntentsForTick, activeRoomsKey, begetRoomProcessQueue, getProcessorChannel } from 'xxscreeps/engine/processor/model.js';
-import { runShardInitializers, runShardTickProcessors } from 'xxscreeps/engine/processor/shard.js';
+import { runShardInitializers, runShardPreTickProcessors, runShardTickProcessors } from 'xxscreeps/engine/processor/shard.js';
 import { getRunnerChannel, runnerUsersSetKey } from 'xxscreeps/engine/runner/model.js';
 import { Fn } from 'xxscreeps/functional/fn.js';
 import { mustNotReject } from 'xxscreeps/utility/async.js';
@@ -102,6 +102,7 @@ async function tick() {
 	// Initialize tick
 	const time = shard.time;
 	const nextTime = time + 1;
+	await runShardPreTickProcessors(shard, time);
 	await Promise.all([
 		shard.scratch.copy('activeUsers', runnerUsersSetKey(time)),
 		processorChannel.publish({ type: 'process', time }),
