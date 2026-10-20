@@ -15,6 +15,10 @@ export const roomTickProcessors: RoomTickProcessor[] = [];
 export type ShardTickProcessor = (shard: Shard, time: number) => Promise<void> | void;
 export const shardTickProcessors: ShardTickProcessor[] = [];
 
+/** Runs before runners and room processors observe a game tick. */
+export type ShardPreTickProcessor = (shard: Shard, time: number) => Promise<void> | void;
+export const shardPreTickProcessors: ShardPreTickProcessor[] = [];
+
 export type ShardInitializer = (shard: Shard) => Promise<void>;
 export const shardInitializers: ShardInitializer[] = [];
 

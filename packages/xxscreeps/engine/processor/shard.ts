@@ -1,7 +1,11 @@
-import type { ShardInitializer, ShardTickProcessor } from './symbols.js';
+import type { ShardInitializer, ShardPreTickProcessor, ShardTickProcessor } from './symbols.js';
 import type { Shard } from 'xxscreeps/engine/db/index.js';
 import { Fn } from 'xxscreeps/functional/fn.js';
-import { shardInitializers, shardTickProcessors } from './symbols.js';
+import { shardInitializers, shardPreTickProcessors, shardTickProcessors } from './symbols.js';
+
+export function registerShardPreTickProcessor(tick: ShardPreTickProcessor) {
+	shardPreTickProcessors.push(tick);
+}
 
 export function registerShardTickProcessor(tick: ShardTickProcessor) {
 	shardTickProcessors.push(tick);
@@ -15,6 +19,10 @@ export function registerShardInitializer(initializer: ShardInitializer) {
 
 export async function runShardInitializers(shard: Shard) {
 	await Promise.all(shardInitializers.map(fn => fn(shard)));
+}
+
+export async function runShardPreTickProcessors(shard: Shard, time: number) {
+	await Fn.mapAwait(shardPreTickProcessors, fn => fn(shard, time));
 }
 
 export interface DueSet {
