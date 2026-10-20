@@ -80,7 +80,7 @@ export type InvaderIntents = typeof intents;
 const intents = [
 	registerIntentProcessor(Room, 'requestInvader', { internal: true }, (room, context, xx: number, yy: number, role: Role, strength: Strength) => {
 		const pos = new RoomPosition(xx, yy, room.name);
-		room['#insertObject'](create(pos, role, strength, Game.time + 200));
+		room['#insertObject'](create(pos, role, strength, Game.time + C.CREEP_LIFE_TIME));
 		activateNPC(room, kInvaderUserId);
 		context.setActive();
 	}),
