@@ -1,4 +1,4 @@
-import { registerIntentProcessor, registerRoomTickProcessor } from 'xxscreeps/engine/processor/index.js';
+import { registerIntentProcessor, registerRoomTickProcessor, registerShardPreTickProcessor } from 'xxscreeps/engine/processor/index.js';
 import { mappedNumericComparator } from 'xxscreeps/functional/comparator.js';
 import { Fn } from 'xxscreeps/functional/fn.js';
 import { Game } from 'xxscreeps/game/index.js';
@@ -9,9 +9,37 @@ import { activateNPC, registerNPC } from 'xxscreeps/mods/npc/processor.js';
 import * as C from 'xxscreeps:mods/constants';
 import { kInvaderUserId } from './game.js';
 import { loop } from './loop/index.js';
+import { invaderLedgerKey, readScheduledInvaders, scheduledInvadersKey } from './schedule.js';
 
 // Register invader NPC
 registerNPC(kInvaderUserId, loop);
+
+/** Profile invaders are made durable before their exact tick and visible before player runners start it. */
+registerShardPreTickProcessor(async (shard, time) => {
+	const scheduled = await readScheduledInvaders(shard, time);
+	if (scheduled.length === 0) return;
+	for (const entry of scheduled) {
+		const room = await shard.loadRoom(entry.room, time, true);
+		room['#initialize']();
+		let creep = [ ...room['#objects'] ].find(object => object instanceof Creep.Creep && object.name === entry.name) as Creep.Creep | undefined;
+		if (creep && creep['#user'] !== kInvaderUserId) throw new Error(`scheduled invader name is already owned: ${entry.name}`);
+		if (!creep) {
+			creep = create(new RoomPosition(entry.x, entry.y, entry.room), entry.role, entry.strength, time + C.CREEP_LIFE_TIME);
+			creep.name = entry.name;
+			if (entry.boosted) {
+				const boosts = { [C.HEAL]: 'LO', [C.RANGED_ATTACK]: 'KO', [C.WORK]: 'ZH', [C.ATTACK]: 'UH', [C.TOUGH]: 'GO' } as const;
+				for (const part of creep.body) {
+					if (part.type in boosts) part.boost = boosts[part.type as keyof typeof boosts];
+				}
+			}
+			room['#insertObject'](creep);
+			room['#flushObjects'](null);
+			await shard.saveRoom(entry.room, time, room);
+		}
+		await shard.data.set(invaderLedgerKey(entry.name), JSON.stringify({ ...entry, ageTime: creep['#ageTime'], id: creep.id, insertedAt: time }));
+	}
+	await shard.data.vDel(scheduledInvadersKey(time));
+});
 
 // Register invader generator
 registerRoomTickProcessor((room, context) => {
@@ -87,8 +115,8 @@ const intents = [
 ];
 
 // Creep factory for invaders
-type Strength = 'big' | 'small';
-type Role = 'healer' | 'melee' | 'ranged';
+export type Strength = 'big' | 'small';
+export type Role = 'healer' | 'melee' | 'ranged';
 
 const bodies = {
 	bighealer: () => createBody({ [C.HEAL]: 25 }),
