@@ -1,9 +1,11 @@
 import type { Shard } from 'xxscreeps/engine/db/index.js';
 import { registerShardPreTickProcessor } from 'xxscreeps/engine/processor/index.js';
+import { createRoomObject } from 'xxscreeps/game/object.js';
 import { RoomPosition } from 'xxscreeps/game/position.js';
 import * as Creep from 'xxscreeps/mods/classic/creep/creep.js';
+import { OpenStore } from 'xxscreeps/mods/classic/resource/store.js';
 import { kInvaderUserId } from './game.js';
-import { create, type Role, type Strength } from './model.js';
+import { createBodyFor, type Role, type Strength } from './model.js';
 import * as C from 'xxscreeps:mods/constants';
 
 export interface ScheduledInvader {
@@ -47,8 +49,12 @@ registerShardPreTickProcessor(async (shard, time) => {
 		let creep = [ ...room['#objects'] ].find(object => object instanceof Creep.Creep && object.name === entry.name) as Creep.Creep | undefined;
 		if (creep && creep['#user'] !== kInvaderUserId) throw new Error(`scheduled invader name is already owned: ${entry.name}`);
 		if (!creep) {
-			creep = create(new RoomPosition(entry.x, entry.y, entry.room), entry.role, entry.strength, time + C.CREEP_LIFE_TIME);
-			creep.name = entry.name;
+			const body = createBodyFor(entry.role, entry.strength).map(type => ({ type, hits: 100, boost: undefined }));
+			creep = Object.assign(createRoomObject(new Creep.Creep(), new RoomPosition(entry.x, entry.y, entry.room)), {
+				body, fatigue: 0, hits: body.length * 100, name: entry.name, store: OpenStore['#create'](Creep.calculateCarry(body)),
+			});
+			creep['#user'] = kInvaderUserId;
+			creep['#ageTime'] = time + C.CREEP_LIFE_TIME;
 			if (entry.boosted) {
 				const boosts = { [C.HEAL]: 'LO', [C.RANGED_ATTACK]: 'KO', [C.WORK]: 'ZH', [C.ATTACK]: 'UH', [C.TOUGH]: 'GO' } as const;
 				for (const part of creep.body) if (part.type in boosts) part.boost = boosts[part.type as keyof typeof boosts];
