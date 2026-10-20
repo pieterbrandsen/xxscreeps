@@ -17,10 +17,14 @@ const bodies = {
 };
 
 export function create(pos: RoomPosition, role: Role, strength: Strength, ageTime: number) {
-	const body = bodies[`${strength}${role}`]();
+	const body = createBodyFor(role, strength);
 	const creep = Creep.create(pos, body, `Invader_${pos.roomName}_${Math.floor(Math.random() * 1000)}`, kInvaderUserId);
 	creep['#ageTime'] = ageTime;
 	return creep;
+}
+
+export function createBodyFor(role: Role, strength: Strength) {
+	return bodies[`${strength}${role}`]();
 }
 
 function createBody(parts: Partial<Record<Creep.PartType, number>>) {
