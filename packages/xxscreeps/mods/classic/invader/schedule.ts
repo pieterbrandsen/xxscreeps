@@ -1,5 +1,5 @@
 import type { Shard } from 'xxscreeps/engine/db/index.js';
-import { registerShardPreTickProcessor } from 'xxscreeps/engine/processor/index.js';
+import { registerShardTickProcessor } from 'xxscreeps/engine/processor/index.js';
 import { activeRoomsKey } from 'xxscreeps/engine/processor/model.js';
 import { createRoomObject } from 'xxscreeps/game/object.js';
 import { activateNPC } from 'xxscreeps/mods/npc/processor.js';
@@ -42,7 +42,7 @@ export async function readScheduledInvaders(shard: Shard, time: number): Promise
 	return raw === null ? [] : JSON.parse(raw) as ScheduledInvader[];
 }
 
-registerShardPreTickProcessor(async (shard, time) => {
+registerShardTickProcessor(async (shard, time) => {
 	const scheduled = await readScheduledInvaders(shard, time);
 	if (scheduled.length === 0) return;
 	for (const entry of scheduled) {
