@@ -4,6 +4,7 @@ import { Fn } from 'xxscreeps/functional/fn.js';
 import { Game } from 'xxscreeps/game/index.js';
 import { RoomPosition } from 'xxscreeps/game/position.js';
 import { Room } from 'xxscreeps/game/room/index.js';
+import * as Creep from 'xxscreeps/mods/classic/creep/creep.js';
 import { activateNPC, registerNPC } from 'xxscreeps/mods/npc/processor.js';
 import * as C from 'xxscreeps:mods/constants';
 import { kInvaderUserId } from './game.js';
@@ -84,6 +85,22 @@ const intents = [
 	registerIntentProcessor(Room, 'requestInvader', { internal: true }, (room, context, xx: number, yy: number, role: Role, strength: Strength) => {
 		const pos = new RoomPosition(xx, yy, room.name);
 		room['#insertObject'](create(pos, role, strength, Game.time + C.CREEP_LIFE_TIME));
+		activateNPC(room, kInvaderUserId);
+		context.setActive();
+	}),
+	registerIntentProcessor(Room, 'scheduleInvader', { internal: true }, (
+		room, context, name: string, role: Role, strength: Strength, xx: number, yy: number, boosted: boolean,
+	) => {
+		const existing = [ ...room['#objects'] ].find(object => object instanceof Creep.Creep && object.name === name) as Creep.Creep | undefined;
+		if (existing && existing['#user'] !== kInvaderUserId) throw new Error(`scheduled invader name is already owned: ${name}`);
+		if (existing) return;
+		const creep = create(new RoomPosition(xx, yy, room.name), role, strength, Game.time + C.CREEP_LIFE_TIME);
+		creep.name = name;
+		if (boosted) {
+			const boosts = { [C.HEAL]: 'LO', [C.RANGED_ATTACK]: 'KO', [C.WORK]: 'ZH', [C.ATTACK]: 'UH', [C.TOUGH]: 'GO' } as const;
+			for (const part of creep.body) if (part.type in boosts) part.boost = boosts[part.type as keyof typeof boosts];
+		}
+		room['#insertObject'](creep);
 		activateNPC(room, kInvaderUserId);
 		context.setActive();
 	}),
