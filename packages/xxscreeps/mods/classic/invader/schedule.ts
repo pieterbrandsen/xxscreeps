@@ -1,6 +1,7 @@
 import type { Shard } from 'xxscreeps/engine/db/index.js';
 import { registerShardPreTickProcessor } from 'xxscreeps/engine/processor/index.js';
 import { createRoomObject } from 'xxscreeps/game/object.js';
+import { activateNPC } from 'xxscreeps/mods/npc/processor.js';
 import { RoomPosition } from 'xxscreeps/game/position.js';
 import * as Creep from 'xxscreeps/mods/classic/creep/creep.js';
 import { OpenStore } from 'xxscreeps/mods/classic/resource/store.js';
@@ -60,6 +61,8 @@ registerShardPreTickProcessor(async (shard, time) => {
 				for (const part of creep.body) if (part.type in boosts) part.boost = boosts[part.type as keyof typeof boosts];
 			}
 			room['#insertObject'](creep);
+			// Scheduling bypasses the normal request intent, so persist NPC activation with the new creep.
+			activateNPC(room, kInvaderUserId);
 			room['#flushObjects'](null);
 			await shard.saveRoom(entry.room, time, room);
 		}
