@@ -10,6 +10,7 @@ import * as C from 'xxscreeps:mods/constants';
 import { kInvaderUserId } from './game.js';
 import { loop } from './loop/index.js';
 import { create, type Role, type Strength } from './model.js';
+import type { ScheduledRaidCreep } from './schedule.js';
 
 export { create } from './model.js';
 
@@ -102,6 +103,23 @@ const intents = [
 		}
 		room['#insertObject'](creep);
 		activateNPC(room, kInvaderUserId);
+		context.setActive();
+	}),
+	registerIntentProcessor(Room, 'scheduleRaid', { internal: true }, (
+		room, context, payload: string,
+	) => {
+		const entry = JSON.parse(payload) as ScheduledRaidCreep;
+		const { name, owner, parts, boosts, x: xx, y: yy } = entry;
+		if (!name || !owner || parts.length === 0 || (boosts && boosts.length !== parts.length)) throw new Error(`invalid scheduled raid creep ${name}`);
+		if (!parts.every(part => (C.BODYPARTS_ALL as readonly string[]).includes(part))) throw new Error(`invalid scheduled raid body ${name}`);
+		const existing = [ ...room['#objects'] ].find(object => object instanceof Creep.Creep && object.name === name) as Creep.Creep | undefined;
+		if (existing && existing['#user'] !== owner) throw new Error(`scheduled raid name is already owned: ${name}`);
+		if (existing) return;
+		const body = parts.map((type, index) => ({ type: type as Creep.PartType, hits: 100, boost: boosts?.[index] as Creep.Creep['body'][number]['boost'] }));
+		const creep = Creep.createWithBody(new RoomPosition(xx, yy, room.name), body, name, owner);
+		creep['#ageTime'] = Game.time + C.CREEP_LIFE_TIME;
+		room['#insertObject'](creep);
+		if (owner === kInvaderUserId) activateNPC(room, kInvaderUserId);
 		context.setActive();
 	}),
 ];
