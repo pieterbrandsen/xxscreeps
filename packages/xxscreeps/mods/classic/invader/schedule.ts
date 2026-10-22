@@ -1,5 +1,6 @@
 import type { Shard } from 'xxscreeps/engine/db/index.js';
 import { registerShardPreTickProcessor } from 'xxscreeps/engine/processor/index.js';
+import { activeRoomsKey } from 'xxscreeps/engine/processor/model.js';
 import { createRoomObject } from 'xxscreeps/game/object.js';
 import { activateNPC } from 'xxscreeps/mods/npc/processor.js';
 import { RoomPosition } from 'xxscreeps/game/position.js';
@@ -66,6 +67,8 @@ registerShardPreTickProcessor(async (shard, time) => {
 			room['#flushObjects'](null);
 			await shard.saveRoom(entry.room, time, room);
 		}
+		// A pre-tick insertion has no RoomProcessorContext to wake the room. Queue it explicitly so the NPC loop and socket publish run.
+		await shard.scratch.zAdd(activeRoomsKey, [ [ 0, entry.room ] ]);
 		await shard.data.set(invaderLedgerKey(entry.name), JSON.stringify({ ...entry, ageTime: creep['#ageTime'], id: creep.id, insertedAt: time }));
 	}
 	await shard.data.vDel(scheduledInvadersKey(time));
