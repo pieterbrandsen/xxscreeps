@@ -68,6 +68,7 @@ export const runnerUsersSetKey = (time: number) =>
 	`tick${time % 2}/runnerUsers`;
 
 const scheduledConsoleKey = (userId: string, time: number) => `user/${userId}/scheduledConsole/${time}`;
+const scheduledCpuBucketKey = (userId: string, time: number) => `user/${userId}/scheduledCpuBucket/${time}`;
 
 export async function scheduleRunnerEval(shard: Shard, userId: string, time: number, payload: RunnerPlayerEvalPayload) {
 	const key = scheduledConsoleKey(userId, time);
@@ -83,4 +84,24 @@ export async function takeScheduledRunnerEval(shard: Shard, userId: string, time
 	if (raw === null) return [];
 	await shard.data.vDel(key);
 	return JSON.parse(raw) as RunnerPlayerEvalPayload[];
+}
+
+/** Set one runner's bucket immediately before its scheduled tick is evaluated. */
+export async function scheduleRunnerCpuBucket(shard: Shard, userId: string, time: number, bucket: number) {
+	if (!Number.isSafeInteger(time) || time < 2) throw new Error('Scheduled CPU bucket time must be at least two');
+	if (!Number.isSafeInteger(bucket) || bucket < 0) throw new Error('Scheduled CPU bucket must be a non-negative integer');
+	const key = scheduledCpuBucketKey(userId, time);
+	if (await shard.data.get(key) !== null) throw new Error(`CPU bucket is already scheduled for user ${userId} at tick ${time}`);
+	await shard.data.set(key, String(bucket));
+}
+
+/** Consume the one-shot bucket control for this runner tick, if one was scheduled. */
+export async function takeScheduledRunnerCpuBucket(shard: Shard, userId: string, time: number): Promise<number | undefined> {
+	const key = scheduledCpuBucketKey(userId, time);
+	const raw = await shard.data.get(key);
+	if (raw === null) return;
+	await shard.data.vDel(key);
+	const bucket = Number(raw);
+	if (!Number.isSafeInteger(bucket) || bucket < 0) throw new Error(`Scheduled CPU bucket is corrupt for user ${userId} at tick ${time}`);
+	return bucket;
 }
