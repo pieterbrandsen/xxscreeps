@@ -201,6 +201,12 @@ export interface RunnerConfig {
 
 export interface RunnerCPUConfig {
 	/**
+	 * Fixed CPU regenerated each tick for named users. A name here overrides `limit`,
+	 * GCL scaling and `baseLimit` only for that user's runner.
+	 */
+	userLimits?: Readonly<Record<string, number>>;
+
+	/**
 	 * CPU bucket size per user
 	 * @default 10000
 	 */

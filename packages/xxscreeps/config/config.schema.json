@@ -111,7 +111,7 @@
     "ProcessorConfig": {
       "properties": {
         "concurrency": {
-          "description": "Total number of processor tasks to run at a time. The default is the number of CPU cores (including hyper-threaded) + 1",
+          "description": "Total number of processor tasks to run at a time. The default is the number of CPU cores available to this process (including hyper-threaded, respecting CPU affinity) + 1",
           "type": "number"
         },
         "intentAbandonTimeout": {
@@ -129,9 +129,28 @@
     },
     "RunnerCPUConfig": {
       "properties": {
+        "baseLimit": {
+          "default": 20,
+          "description": "CPU regenerated at GCL 1 when no fixed limit is configured.",
+          "type": "number"
+        },
         "bucket": {
           "default": 10000,
           "description": "CPU bucket size per user",
+          "type": "number"
+        },
+        "gclToCPU": {
+          "default": false,
+          "description": "Raise the CPU limit by 10 for every GCL after level 1.",
+          "type": "boolean"
+        },
+        "limit": {
+          "description": "Fixed CPU regenerated each tick and reported as Game.cpu.limit. When present it takes precedence over GCL scaling. Omit to use baseLimit or optional GCL scaling.",
+          "type": "number"
+        },
+        "maxLimit": {
+          "default": 100,
+          "description": "Highest CPU limit permitted by GCL scaling.",
           "type": "number"
         },
         "memoryLimit": {
@@ -143,6 +162,13 @@
           "default": 500,
           "description": "Maximum amount of time in milliseconds that a user's runtime may run for.",
           "type": "number"
+        },
+        "userLimits": {
+          "additionalProperties": {
+            "type": "number"
+          },
+          "description": "Fixed CPU regenerated each tick for named users. A name here overrides `limit`, GCL scaling and `baseLimit` only for that user's runner.",
+          "type": "object"
         }
       },
       "type": "object"
@@ -150,7 +176,7 @@
     "RunnerConfig": {
       "properties": {
         "concurrency": {
-          "description": "Total number of run tasks to run at a time. The default is the number of CPU cores (including hyper-threaded) + 1",
+          "description": "Total number of run tasks to run at a time. The default is the number of CPU cores available to this process (including hyper-threaded, respecting CPU affinity) + 1",
           "type": "number"
         },
         "cpu": {

@@ -43,6 +43,17 @@ export function cpuLimitForGCL(gcl: number) {
 	return Math.min(config.runner.cpu.maxLimit, config.runner.cpu.baseLimit + (level - 1) * kGCLCPUPerLevel);
 }
 
+/** Resolve a player's configured CPU allocation without changing any other player's budget. */
+export function cpuLimitForPlayer(username: string, gcl: number) {
+	const override = config.runner.cpu.userLimits?.[username];
+	if (override !== undefined) {
+		if (!Number.isSafeInteger(override) || override < 1) throw new Error(`runner.cpu.userLimits.${username} must be a positive integer`);
+		return override;
+	}
+	return config.runner.cpu.limit
+		?? (config.runner.cpu.gclToCPU ? cpuLimitForGCL(gcl) : config.runner.cpu.baseLimit);
+}
+
 const initializeRunner = hooks.makeMapped('runnerWorker');
 /** @internal */
 export async function acquireRunnerContext(shard: Shard) {
@@ -185,10 +196,7 @@ export class PlayerInstance {
 	}
 
 	async run(this: PlayerInstance, time: number, visibleRooms: string[], intentRooms: string[]) {
-		const limit = config.runner.cpu.limit
-			?? (config.runner.cpu.gclToCPU
-				? cpuLimitForGCL(Number(await this.shard.db.data.hGet(User.infoKey(this.userId), 'gcl')) || 0)
-				: config.runner.cpu.baseLimit);
+		const limit = cpuLimitForPlayer(this.username, Number(await this.shard.db.data.hGet(User.infoKey(this.userId), 'gcl')) || 0);
 
 		const result = await (async () => {
 			// Dispose the current sandbox if the user has pushed new code
